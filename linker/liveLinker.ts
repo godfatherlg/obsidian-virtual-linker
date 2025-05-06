@@ -5,7 +5,7 @@ import { App, MarkdownView, TFile, Vault } from 'obsidian';
 
 import IntervalTree from '@flatten-js/interval-tree';
 import { LinkerPluginSettings } from 'main';
-import { ExternalUpdateManager, LinkerCache, PrefixTree } from './linkerCache';
+import { ExternalUpdateManager, LinkerCache, MatchType, PrefixTree } from './linkerCache';
 import { VirtualMatch } from './virtualLinkDom';
 
 function isDescendant(parent: HTMLElement, child: HTMLElement, maxDepth: number = 10) {
@@ -165,9 +165,34 @@ class AutoLinkerPlugin implements PluginValue {
 
                             // console.log("MATCH", name, aFrom, aTo, node.caseIsMatched, node.requiresCaseMatch)
 
-                            matches.push(
-                                new VirtualMatch(id++, name, aFrom, aTo, Array.from(node.files), isAlias, !isWordBoundary, this.settings)
-                            );
+                            // Filter out files with excluded extensions
+                            const filteredFiles = Array.from(node.files).filter(file => {
+                                return !this.settings.excludedExtensions.some(ext => 
+                                    file.path.toLowerCase().endsWith(ext.toLowerCase())
+                                );
+                            });
+                            
+                            // Skip if name is in excluded keywords
+                            const nameToCheck = this.settings.matchCaseSensitive ? name : name.toLowerCase();
+                            const excludedKeywords = this.settings.matchCaseSensitive 
+                                ? this.settings.excludedKeywords 
+                                : this.settings.excludedKeywords.map(k => k.toLowerCase());
+                            
+                            if (filteredFiles.length > 0 && !excludedKeywords.includes(nameToCheck)) {
+                                matches.push(
+                                    new VirtualMatch(
+                                        id++,
+                                        name,
+                                        aFrom,
+                                        aTo,
+                                        filteredFiles,
+                                        isAlias ? MatchType.Alias : MatchType.Note,
+                                        !isWordBoundary,
+                                        this.settings,
+                                        node.headerId
+                                    )
+                                );
+                            }
                         }
                     }
                 }
@@ -184,11 +209,7 @@ class AutoLinkerPlugin implements PluginValue {
             // We want to exclude some syntax nodes from being decorated,
             // such as code blocks and manually added links
             const excludedIntervalTree = new IntervalTree();
-            const excludedTypes = ['codeblock', 'code-block', 'inline-code', 'internal-link', 'link', 'url', 'hashtag'];
-
-            if (!this.settings.includeHeaders) {
-                excludedTypes.push('header-');
-            }
+            let excludedTypes = ['codeblock', 'code-block', 'inline-code', 'internal-link', 'link', 'url', 'hashtag', 'header-'];
 
             // We also want to exclude links to files that are already linked by a real link
             const app = this.app;

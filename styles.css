@@ -1,37 +1,56 @@
-/*
-
-This CSS file will be included with your plugin, and
-available in the app when your plugin is enabled.
-
-If your plugin does not need CSS, delete this file.
-
-*/
-
-.virtual-link-default {
-    filter: brightness(0.6);
+:root {
+  --virtual-link-opacity: 0.6;
+  --virtual-link-underline: underline;
+  --virtual-link-dotted-underline: underline dotted;
+  --settings-box-min-width: 200px;
+  --settings-box-min-height: 60px;
 }
 
-.linker-suffix-icon {
+/* Base virtual link styles */
+.virtual-link {
+  &-default,
+  &-header {
+    filter: brightness(var(--virtual-link-opacity));
+    text-decoration: var(--virtual-link-underline);
+  }
+  
+  /* Header-specific styles */
+  &-header {
+    font-weight: inherit;
+    
+    /* Dotted underline for headings */
+    h1 &, h2 &, h3 &, h4 &, h5 &, h6 &,
+    .cm-header &, .HyperMD-header & {
+      text-decoration: var(--virtual-link-dotted-underline);
+      text-decoration-style: dotted; /* Modern browsers */
+    }
+  }
+}
+
+/* Interaction styles */
+.virtual-link-span {
+  &:hover .multiple-files-references {
+    display: inline;
+  }
+  
+  .multiple-files-references {
+    display: none;
+  }
+  
+  .multiple-files-indicator {
+    display: none; /* Permanently hidden separator */
+  }
+}
+
+/* UI Components */
+.linker {
+  &-suffix-icon {
     user-select: none;
-}
-
-.linker-settings-text-box {
-    min-width: 200px;
-    min-height: 60px;
-}
-
-
-.virtual-link-span:hover .multiple-files-references {
-    display: inline;
-}
-.virtual-link-span:hover .multiple-files-indicator {
-    display: none;
-}
-
-.multiple-files-references {
-    display: none;
-}
-
-.multiple-files-indicator {
-    display: inline;
+    -webkit-user-select: none; /* Safari support */
+  }
+  
+  &-settings-text-box {
+    min-width: var(--settings-box-min-width);
+    min-height: var(--settings-box-min-height);
+  }
 }

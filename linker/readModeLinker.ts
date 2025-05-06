@@ -1,7 +1,7 @@
 import { App, getLinkpath, MarkdownPostProcessorContext, MarkdownRenderChild, TFile } from 'obsidian';
 
 import { LinkerPluginSettings } from '../main';
-import { LinkerCache, PrefixTree } from './linkerCache';
+import { LinkerCache, MatchType, PrefixTree } from './linkerCache';
 import { VirtualMatch } from './virtualLinkDom';
 
 export class GlossaryLinker extends MarkdownRenderChild {
@@ -49,15 +49,12 @@ export class GlossaryLinker extends MarkdownRenderChild {
     }
 
     onload() {
-        if (!this.settings.linkerActivated) {
+        if (!this.settings.linkerActivated || this.settings.hideReadModeLinks) {
             return;
         }
 
         // return;
-        const tags = ['p', 'li', 'td', 'th', 'span', 'em', 'strong']; //"div"
-        if (this.settings.includeHeaders) {
-            tags.push('h1', 'h2', 'h3', 'h4', 'h5', 'h6');
-        }
+        const tags = ['p', 'li', 'td', 'th', 'span', 'em', 'strong']; // 明确不包含h1-h6
 
         // TODO: Onload is called on the divs separately, so this sets are not stored between divs
         // Since divs can be rendered in arbitrary order, storing information about already linked files is not easy
@@ -117,6 +114,10 @@ export class GlossaryLinker extends MarkdownRenderChild {
                                         // TODO: Handle multiple files
                                         // const file = node.files.values().next().value;
 
+                                        // 确保标题匹配时headerId正确传递
+                                        const headerId = node.type === MatchType.Header 
+                                            ? node.headerId
+                                            : undefined;
                                         matches.push(
                                             new VirtualMatch(
                                                 id++,
@@ -124,9 +125,10 @@ export class GlossaryLinker extends MarkdownRenderChild {
                                                 nFrom,
                                                 nTo,
                                                 Array.from(node.files),
-                                                node.isAlias,
+                                                node.type,
                                                 !isWordBoundary,
-                                                this.settings
+                                                this.settings,
+                                                headerId
                                             )
                                         );
                                     });

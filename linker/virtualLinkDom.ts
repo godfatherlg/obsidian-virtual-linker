@@ -1,6 +1,7 @@
 import IntervalTree from '@flatten-js/interval-tree';
 import { LinkerPluginSettings } from 'main';
-import { TFile } from 'obsidian';
+import { TFile, getLinkpath } from 'obsidian';
+import { MatchType } from './linkerCache';
 
 export class VirtualMatch {
     constructor(
@@ -9,10 +10,15 @@ export class VirtualMatch {
         public from: number,
         public to: number,
         public files: TFile[],
-        public isAlias: boolean,
+        public type: MatchType,
         public isSubWord: boolean,
-        public settings: LinkerPluginSettings
+        public settings: LinkerPluginSettings,
+        public headerId?: string
     ) {}
+
+    get isAlias(): boolean {
+        return this.type === MatchType.Alias;
+    }
 
     /////////////////////////////////////////////////
     // DOM methods
@@ -20,7 +26,7 @@ export class VirtualMatch {
 
     getCompleteLinkElement() {
         const span = this.getLinkRootSpan();
-        const firstPath = this.files.length > 0 ? this.files[0].path: ""; 
+        const firstPath = this.files.length > 0 ? getLinkpath(this.files[0].path) : "";
         span.appendChild(this.getLinkAnchorElement(this.originText, firstPath));
         if (this.files.length > 1) {
             if (!this.isSubWord) {
@@ -38,7 +44,14 @@ export class VirtualMatch {
 
     getLinkAnchorElement(linkText: string, href: string) {
         const link = document.createElement('a');
-        link.href = href;
+        
+        // 强制处理所有可能的headerId情况
+        if (this.headerId) {
+            link.href = `${href}#${this.headerId}`;
+            link.setAttribute('data-heading-id', this.headerId);
+        } else {
+            link.href = href;
+        }
         link.textContent = linkText;
         link.target = '_blank';
         link.rel = 'noopener noreferrer';

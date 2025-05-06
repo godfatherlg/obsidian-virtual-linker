@@ -11,6 +11,7 @@ export interface LinkerPluginSettings {
     advancedSettings: boolean;
     linkerActivated: boolean;
     suppressSuffixForSubWords: boolean;
+    excludedExtensions: string[];
     matchAnyPartsOfWords: boolean;
     matchEndOfWords: boolean;
     matchBeginningOfWords: boolean;
@@ -42,6 +43,8 @@ export interface LinkerPluginSettings {
     excludeLinksToRealLinkedFiles: boolean;
     includeAliases: boolean;
     alwaysShowMultipleReferences: boolean;
+    hideReadModeLinks: boolean;
+    excludedKeywords: string[]; // Keywords to exclude from virtual linking
     // wordBoundaryRegex: string;
     // conversionFormat
 }
@@ -59,6 +62,7 @@ const DEFAULT_SETTINGS: LinkerPluginSettings = {
     excludedDirectoriesForLinking: [],
     virtualLinkSuffix: '🔗',
     virtualLinkAliasSuffix: '🔗',
+    excludedExtensions: ['.mp4'],
     useMarkdownLinks: false,
     linkFormat: 'shortest',
     defaultUseMarkdownLinks: false,
@@ -81,6 +85,8 @@ const DEFAULT_SETTINGS: LinkerPluginSettings = {
     excludeLinksToRealLinkedFiles: true,
     includeAliases: true,
     alwaysShowMultipleReferences: false,
+    hideReadModeLinks: false,
+    excludedKeywords: [],
     // wordBoundaryRegex: '/[\t- !-/:-@\[-`{-~\p{Emoji_Presentation}\p{Extended_Pictographic}]/u',
 };
 
@@ -165,14 +171,22 @@ export default class LinkerPlugin extends Plugin {
                 if (!selectionRange) return false;
 
                 // Find all virtual links in the selection
-                const virtualLinks = Array.from(selectionRange.querySelectorAll('.virtual-link-a'))
-                    .filter((link): link is HTMLElement => link instanceof HTMLElement)
+                // Find all virtual link elements in the selection
+                const virtualLinkElements = Array.from(selectionRange.querySelectorAll('a'));
+                
+                const virtualLinks = virtualLinkElements
+                    .filter((link): link is HTMLElement => {
+                        if (!(link instanceof HTMLElement)) return false;
+                        return link.classList.contains('virtual-linker-link') || 
+                               link.classList.contains('virtual-link-a');
+                    })
                     .map(link => ({
                         element: link,
                         from: parseInt(link.getAttribute('from') || '-1'),
                         to: parseInt(link.getAttribute('to') || '-1'),
                         text: link.getAttribute('origin-text') || '',
-                        href: link.getAttribute('href') || ''
+                        href: link.getAttribute('href') || '',
+                        headerId: link.getAttribute('data-heading-id') || ''
                     }))
                     .filter(link => {
                         const linkFrom = editor.offsetToPos(link.from);
@@ -187,8 +201,12 @@ export default class LinkerPlugin extends Plugin {
                 const replacements: {from: number, to: number, text: string}[] = [];
 
                 for (const link of virtualLinks) {
-                    const targetFile = this.app.vault.getAbstractFileByPath(link.href);
-                    if (!(targetFile instanceof TFile)) continue;
+                    // Extract path without anchor
+                    const hrefWithoutAnchor = link.href.split('#')[0];
+                    const targetFile = this.app.vault.getAbstractFileByPath(hrefWithoutAnchor);
+                    if (!(targetFile instanceof TFile)) {
+                        continue;
+                    }
 
                     const activeFile = this.app.workspace.getActiveFile();
                     const activeFilePath = activeFile?.path ?? '';
@@ -205,11 +223,20 @@ export default class LinkerPlugin extends Plugin {
                     const shortestFile = this.app.metadataCache.getFirstLinkpathDest(lastPart!, '');
                     let shortestPath = shortestFile?.path === targetFile.path ? lastPart : absolutePath;
 
-                    // Remove .md extension if needed
+                    // Get headerId from virtual link element
+                    const headerId = link.element.getAttribute('data-heading-id');
+                    const pathSuffix = headerId ? `#${headerId}` : '';
+
+                    // Remove .md extension if needed and add headerId
                     if (!replacementPath.endsWith('.md')) {
                         if (absolutePath.endsWith('.md')) absolutePath = absolutePath.slice(0, -3);
                         if (shortestPath.endsWith('.md')) shortestPath = shortestPath.slice(0, -3);
                         if (relativePath.endsWith('.md')) relativePath = relativePath.slice(0, -3);
+                        
+                        // Add headerId to all paths
+                        absolutePath += pathSuffix;
+                        shortestPath += pathSuffix;
+                        relativePath += pathSuffix;
                     }
 
                     const useMarkdownLinks = this.settings.useDefaultLinkStyleForConversion
@@ -219,6 +246,8 @@ export default class LinkerPlugin extends Plugin {
                     const linkFormat = this.settings.useDefaultLinkStyleForConversion
                         ? this.settings.defaultLinkFormat
                         : this.settings.linkFormat;
+
+                    console.log('[Linker Debug] Link format:', linkFormat, 'Use markdown links:', useMarkdownLinks);
 
                     let replacement = '';
                     if (replacementPath === link.text && linkFormat === 'shortest') {
@@ -233,6 +262,7 @@ export default class LinkerPlugin extends Plugin {
                             `[[${path}|${link.text}]]`;
                     }
 
+                    console.log('[Linker Debug] Replacement text:', replacement);
                     replacements.push({
                         from: link.from,
                         to: link.to,
@@ -348,14 +378,17 @@ export default class LinkerPlugin extends Plugin {
                                 // Problem: we cannot just take the fileToLinktext result, as it depends on the app settings
                                 const replacementPath = app.metadataCache.fileToLinktext(target as TFile, activeFilePath);
 
+                                // Get headerId from virtual link if exists
+                                const headerId = targetElement.getAttribute('data-heading-id');
+
                                 // The last part of the replacement path is the real shortest file name
                                 // We have to check, if it leads to the correct file
                                 const lastPart = replacementPath.split('/').pop()!;
                                 const shortestFile = app.metadataCache.getFirstLinkpathDest(lastPart!, '');
-                                // let shortestPath = shortestFile?.path == target.path ? lastPart : replacementPath;
                                 let shortestPath = shortestFile?.path == target.path ? lastPart : absolutePath;
 
-                                // Remove superfluous .md extension
+                                // Remove superfluous .md extension and add headerId if exists
+                                const pathSuffix = headerId ? `#${headerId}` : '';
                                 if (!replacementPath.endsWith('.md')) {
                                     if (absolutePath.endsWith('.md')) {
                                         absolutePath = absolutePath.slice(0, -3);
@@ -366,6 +399,10 @@ export default class LinkerPlugin extends Plugin {
                                     if (relativePath.endsWith('.md')) {
                                         relativePath = relativePath.slice(0, -3);
                                     }
+                                    // Add headerId to all paths
+                                    absolutePath += pathSuffix;
+                                    shortestPath += pathSuffix;
+                                    relativePath += pathSuffix;
                                 }
 
                                 const useMarkdownLinks = settings.useDefaultLinkStyleForConversion
@@ -413,6 +450,20 @@ export default class LinkerPlugin extends Plugin {
                                 }
 
                                 editor?.replaceRange(replacement, fromEditorPos, toEditorPos);
+                            });
+                    });
+
+                    menu.addItem((item) => {
+                        // Item to add virtual link text to excluded keywords
+                        item.setTitle('[Virtual Linker] Add to excluded keywords')
+                            .setIcon('ban')
+                            .onClick(async () => {
+                                const text = targetElement.getAttribute('origin-text') || '';
+                                if (text) {
+                                    const newExcludedKeywords = [...new Set([...settings.excludedKeywords, text])];
+                                    await that.updateSettings({ excludedKeywords: newExcludedKeywords });
+                                    updateManager.update();
+                                }
                             });
                     });
                 }
@@ -1007,6 +1058,37 @@ class LinkerSettingTab extends PluginSettingTab {
                     // Set default size
                     text.inputEl.addClass('linker-settings-text-box');
                 });
+
+            // Add setting for excluded keywords
+            new Setting(containerEl)
+                .setName('Excluded keywords')
+                .setDesc('Keywords to exclude from virtual linking (comma separated). Files/aliases or headings matching these keywords will not be linked.')
+                .addTextArea(text => {
+                    text.setValue(this.plugin.settings.excludedKeywords.join(','))
+                        .onChange(async value => {
+                            const keywords = value.split(',')
+                                .map(x => x.trim())
+                                .filter(x => x.length > 0);
+                            await this.plugin.updateSettings({ excludedKeywords: keywords });
+                        });
+                    text.inputEl.addClass('linker-settings-text-box');
+                });
+
+            // Add setting for excluded file extensions
+            new Setting(containerEl)
+                .setName('Excluded file extensions')
+                .setDesc('File extensions to exclude from virtual linking (one per line or comma separated)')
+                .addTextArea(text => {
+                    text.setValue(this.plugin.settings.excludedExtensions.join('\n'))
+                        .onChange(async value => {
+                            const extensions = value.split(/[\n,]/)
+                                .map(x => x.trim())
+                                .filter(x => x.length > 0)
+                                .map(x => x.startsWith('.') ? x : `.${x}`);
+                            await this.plugin.updateSettings({ excludedExtensions: extensions });
+                        });
+                    text.inputEl.addClass('linker-settings-text-box');
+                });
         }
 
         new Setting(containerEl).setName('Link style').setHeading();
@@ -1050,6 +1132,15 @@ class LinkerSettingTab extends PluginSettingTab {
                 toggle.setValue(this.plugin.settings.applyDefaultLinkStyling).onChange(async (value) => {
                     // console.log("Apply default link styling: " + value);
                     await this.plugin.updateSettings({ applyDefaultLinkStyling: value });
+                })
+            );
+
+        new Setting(containerEl)
+            .setName('Hide virtual links in reading view')
+            .setDesc('When enabled, all virtual links will be hidden in reading view')
+            .addToggle((toggle) =>
+                toggle.setValue(this.plugin.settings.hideReadModeLinks).onChange(async (value) => {
+                    await this.plugin.updateSettings({ hideReadModeLinks: value });
                 })
             );
 

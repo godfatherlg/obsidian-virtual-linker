@@ -43,18 +43,29 @@ export class VisitedPrefixNode {
     }
 }
 
+export enum MatchType {
+    Note,    // 指向文章名
+    Alias,   // 指向别名 
+    Header   // 指向标题
+}
+
 export class MatchNode {
     start: number = 0;
     length: number = 0;
     files: Set<TFile> = new Set();
     value: string = '';
-    isAlias: boolean = false;
+    type: MatchType = MatchType.Note;
     caseIsMatched: boolean = true;
     startsAtWordBoundary: boolean = false;
     requiresCaseMatch: boolean = false;
+    headerId?: string;  // 仅用于Header类型
 
     get end(): number {
         return this.start + this.length;
+    }
+
+    get isAlias(): boolean {
+        return this.type === MatchType.Alias;
     }
 }
 
@@ -88,9 +99,21 @@ export class PrefixTree {
             excludedNote = this.app.workspace.getActiveFile();
         }
 
+        // Helper function to check if value matches excluded keywords
+        const isExcluded = (value: string) => {
+            return this.settings.excludedKeywords.some(kw => 
+                kw.toLowerCase() === value.toLowerCase()
+            );
+        };
+
         // From the current nodes in the trie, get all nodes that have files
         for (const node of this._currentNodes) {
             if (node.node.files.size === 0) {
+                continue;
+            }
+            
+            // Skip if node value matches excluded keyword
+            if (isExcluded(node.node.value)) {
                 continue;
             }
             const matchNode = new MatchNode();
@@ -100,9 +123,42 @@ export class PrefixTree {
             matchNode.value = node.node.value;
             matchNode.requiresCaseMatch = node.node.requiresCaseMatch;
 
+            // 确定匹配类型
             const fileNames = Array.from(matchNode.files).map((file) => file.basename);
             const nodeValue = node.node.value;
-            matchNode.isAlias = !fileNames.map((n) => n.toLowerCase()).includes(nodeValue.toLowerCase());
+            
+            if (fileNames.map((n) => n.toLowerCase()).includes(nodeValue.toLowerCase())) {
+                matchNode.type = MatchType.Note;  // 匹配文章名
+            } else {
+                // 检查是否是标题匹配
+                const file = Array.from(matchNode.files)[0];
+                if (file) {
+                    const metadata = this.app.metadataCache.getFileCache(file);
+                    // 优先检查是否是标题匹配
+                    const headingMatch = metadata?.headings?.find(h => 
+                        h.heading.toLowerCase() === nodeValue.toLowerCase()
+                    );
+                    
+                    if (headingMatch) {
+                        matchNode.type = MatchType.Header;
+                        // 使用标准化的标题作为锚点
+                        matchNode.headerId = headingMatch.heading
+                            .toLowerCase()
+                            .replace(/[^\w\u4e00-\u9fa5\- ]/g, '')
+                            .replace(/\s+/g, '-');
+                    }
+                    // 其次检查是否是笔记名匹配
+                    else if (fileNames.map((n) => n.toLowerCase()).includes(nodeValue.toLowerCase())) {
+                        matchNode.type = MatchType.Note;
+                    } 
+                    // 最后默认为别名匹配
+                    else {
+                        matchNode.type = MatchType.Alias;
+                    }
+                    } else {
+                        matchNode.type = MatchType.Alias;  // 匹配别名
+                    }
+                }
 
             // Check if the case is matched
             let currentNode: PrefixNode | undefined = node.node;
@@ -224,6 +280,12 @@ export class PrefixTree {
 
         const metadata = this.app.metadataCache.getFileCache(file);
         let aliases: string[] = metadata?.frontmatter?.aliases ?? [];
+        
+        // Get headers from metadata cache
+        let headers: string[] = [];
+        if (this.settings.includeHeaders && metadata?.headings) {
+            headers = metadata.headings.map(h => h.heading);
+        }
 
         let aliasesWithMatchCase: Set<string> = new Set(metadata?.frontmatter?.[this.settings.propertyNameToMatchCase] ?? []);
         let aliasesWithIgnoreCase: Set<string> = new Set(metadata?.frontmatter?.[this.settings.propertyNameToIgnoreCase] ?? []);
@@ -248,6 +310,9 @@ export class PrefixTree {
         let names = [file.basename];
         if (aliases && this.settings.includeAliases) {
             names.push(...aliases);
+        }
+        if (headers && this.settings.includeHeaders) {
+            names.push(...headers);
         }
 
         names = names.filter(PrefixTree.isNoneEmptyString);
@@ -288,6 +353,17 @@ export class PrefixTree {
         namesWithCaseMatch.push(...namesToMoveFromIgnoreToMatch);
 
         namesWithCaseIgnore.push(...namesWithCaseIgnore.map((name) => name.toLowerCase()));
+
+        // Helper function to check if name matches excluded keywords
+        const isExcluded = (name: string) => {
+            return this.settings.excludedKeywords.some(kw => 
+                kw.toLowerCase() === name.toLowerCase()
+            );
+        };
+
+        // Filter out excluded keywords before adding to tree
+        namesWithCaseIgnore = namesWithCaseIgnore.filter(name => !isExcluded(name));
+        namesWithCaseMatch = namesWithCaseMatch.filter(name => !isExcluded(name));
 
         namesWithCaseIgnore.forEach((name) => {
             this.addFileWithName(name, file, false);
@@ -341,7 +417,20 @@ export class PrefixTree {
 
         const currentVaultFiles = new Set<string>();
         let files = new Array<TFile>();
-        const allFiles = this.app.vault.getMarkdownFiles();
+        // Get all files and filter for supported types
+        const allFiles = this.app.vault.getFiles().filter(file => {
+            // Always include markdown files
+            if (file.extension === 'md') return true;
+            
+            // Include other common file types that can be linked
+            const supportedExtensions = [
+                'png', 'jpg', 'jpeg', 'gif', 'svg',  // Images
+                'pdf', 'doc', 'docx', 'xls', 'xlsx', // Documents
+                'mp3', 'wav', 'ogg',                 // Audio
+                'mp4', 'mov', 'avi', 'webm'          // Video
+            ];
+            return supportedExtensions.includes(file.extension.toLowerCase());
+        }) as TFile[];
 
         allFiles.forEach((f) => currentVaultFiles.add(f.path));
 

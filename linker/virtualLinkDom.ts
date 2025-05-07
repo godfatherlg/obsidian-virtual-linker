@@ -45,7 +45,7 @@ export class VirtualMatch {
     getLinkAnchorElement(linkText: string, href: string) {
         const link = document.createElement('a');
         
-        // 强制处理所有可能的headerId情况
+        // Handle all possible headerId cases
         if (this.headerId) {
             link.href = `${href}#${this.headerId}`;
             link.setAttribute('data-heading-id', this.headerId);

@@ -44,9 +44,9 @@ export class VisitedPrefixNode {
 }
 
 export enum MatchType {
-    Note,    // 指向文章名
-    Alias,   // 指向别名 
-    Header   // 指向标题
+    Note,    // Points to note name
+    Alias,   // Points to alias
+    Header   // Points to heading
 }
 
 export class MatchNode {
@@ -58,7 +58,7 @@ export class MatchNode {
     caseIsMatched: boolean = true;
     startsAtWordBoundary: boolean = false;
     requiresCaseMatch: boolean = false;
-    headerId?: string;  // 仅用于Header类型
+    headerId?: string;  // Only used for Header type
 
     get end(): number {
         return this.start + this.length;
@@ -123,40 +123,40 @@ export class PrefixTree {
             matchNode.value = node.node.value;
             matchNode.requiresCaseMatch = node.node.requiresCaseMatch;
 
-            // 确定匹配类型
+            // Determine match type
             const fileNames = Array.from(matchNode.files).map((file) => file.basename);
             const nodeValue = node.node.value;
             
             if (fileNames.map((n) => n.toLowerCase()).includes(nodeValue.toLowerCase())) {
-                matchNode.type = MatchType.Note;  // 匹配文章名
+                matchNode.type = MatchType.Note;  // Matches note name
             } else {
-                // 检查是否是标题匹配
+                // Check if it's a heading match
                 const file = Array.from(matchNode.files)[0];
                 if (file) {
                     const metadata = this.app.metadataCache.getFileCache(file);
-                    // 优先检查是否是标题匹配
+                    // First check for heading match
                     const headingMatch = metadata?.headings?.find(h => 
                         h.heading.toLowerCase() === nodeValue.toLowerCase()
                     );
                     
                     if (headingMatch) {
                         matchNode.type = MatchType.Header;
-                        // 使用标准化的标题作为锚点
+                        // Use normalized heading as anchor
                         matchNode.headerId = headingMatch.heading
                             .toLowerCase()
                             .replace(/[^\w\u4e00-\u9fa5\- ]/g, '')
                             .replace(/\s+/g, '-');
                     }
-                    // 其次检查是否是笔记名匹配
+                    // Then check for note name match
                     else if (fileNames.map((n) => n.toLowerCase()).includes(nodeValue.toLowerCase())) {
                         matchNode.type = MatchType.Note;
                     } 
-                    // 最后默认为别名匹配
+                    // Default to alias match
                     else {
                         matchNode.type = MatchType.Alias;
                     }
                     } else {
-                        matchNode.type = MatchType.Alias;  // 匹配别名
+                        matchNode.type = MatchType.Alias;  // Matches alias
                     }
                 }
 

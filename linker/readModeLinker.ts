@@ -54,7 +54,7 @@ export class GlossaryLinker extends MarkdownRenderChild {
         }
 
         // return;
-        const tags = ['p', 'li', 'td', 'th', 'span', 'em', 'strong']; // 明确不包含h1-h6
+        const tags = ['p', 'li', 'td', 'th', 'span', 'em', 'strong']; // Explicitly excludes h1-h6
 
         // TODO: Onload is called on the divs separately, so this sets are not stored between divs
         // Since divs can be rendered in arbitrary order, storing information about already linked files is not easy
@@ -114,7 +114,7 @@ export class GlossaryLinker extends MarkdownRenderChild {
                                         // TODO: Handle multiple files
                                         // const file = node.files.values().next().value;
 
-                                        // 确保标题匹配时headerId正确传递
+                                        // Ensure headerId is correctly passed when matching headings
                                         const headerId = node.type === MatchType.Header 
                                             ? node.headerId
                                             : undefined;

@@ -247,8 +247,6 @@ export default class LinkerPlugin extends Plugin {
                         ? this.settings.defaultLinkFormat
                         : this.settings.linkFormat;
 
-                    console.log('[Linker Debug] Link format:', linkFormat, 'Use markdown links:', useMarkdownLinks);
-
                     let replacement = '';
                     if (replacementPath === link.text && linkFormat === 'shortest') {
                         replacement = `[[${replacementPath}]]`;
@@ -261,8 +259,6 @@ export default class LinkerPlugin extends Plugin {
                             `[${link.text}](${path})` :
                             `[[${path}|${link.text}]]`;
                     }
-
-                    console.log('[Linker Debug] Replacement text:', replacement);
                     replacements.push({
                         from: link.from,
                         to: link.to,

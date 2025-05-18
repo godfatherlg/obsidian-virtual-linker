@@ -13,7 +13,8 @@ export class VirtualMatch {
         public type: MatchType,
         public isSubWord: boolean,
         public settings: LinkerPluginSettings,
-        public headerId?: string
+        public headerId?: string,
+        public isBoldContext: boolean = false
     ) {}
 
     get isAlias(): boolean {
@@ -65,9 +66,16 @@ export class VirtualMatch {
     getLinkRootSpan() {
         const span = document.createElement('span');
         span.classList.add('glossary-entry', 'virtual-link', 'virtual-link-span');
+        
         if (this.settings.applyDefaultLinkStyling) {
             span.classList.add('virtual-link-default');
         }
+
+        // Only mark bold context without adding extra DOM elements
+        if (this.isBoldContext) {
+            span.classList.add('virtual-link-in-bold');
+        }
+        
         return span;
     }
 

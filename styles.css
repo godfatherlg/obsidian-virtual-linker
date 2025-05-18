@@ -1,56 +1,87 @@
 :root {
   --virtual-link-opacity: 0.6;
-  --virtual-link-underline: underline;
-  --virtual-link-dotted-underline: underline dotted;
   --settings-box-min-width: 200px;
   --settings-box-min-height: 60px;
 }
 
-/* Base virtual link styles */
-.virtual-link {
-  &-default,
-  &-header {
-    filter: brightness(var(--virtual-link-opacity));
-    text-decoration: var(--virtual-link-underline);
-  }
-  
-  /* Header-specific styles */
-  &-header {
-    font-weight: inherit;
-    
-    /* Dotted underline for headings */
-    h1 &, h2 &, h3 &, h4 &, h5 &, h6 &,
-    .cm-header &, .HyperMD-header & {
-      text-decoration: var(--virtual-link-dotted-underline);
-      text-decoration-style: dotted; /* Modern browsers */
-    }
-  }
-}
-
-/* Interaction styles */
 .virtual-link-span {
-  &:hover .multiple-files-references {
-    display: inline;
-  }
-  
-  .multiple-files-references {
-    display: none;
-  }
-  
-  .multiple-files-indicator {
-    display: none; /* Permanently hidden separator */
-  }
+  display: inline;
+  background-color: rgba(128, 128, 128, 0.1);
+  border-radius: 2px;
+  padding: 0 2px;
 }
 
-/* UI Components */
-.linker {
-  &-suffix-icon {
-    user-select: none;
-    -webkit-user-select: none; /* Safari support */
-  }
-  
-  &-settings-text-box {
-    min-width: var(--settings-box-min-width);
-    min-height: var(--settings-box-min-height);
-  }
+.virtual-link-span,
+.virtual-link-span a,
+.virtual-link-default,
+.virtual-link-header,
+.virtual-link-span .internal-link {
+  text-decoration: none !important;
+  filter: brightness(var(--virtual-link-opacity));
+}
+
+.markdown-preview-view .virtual-link-span {
+  background-color: rgba(128, 128, 128, 0.1);
+  border-radius: 2px;
+  padding: 0 2px;
+}
+
+.linker-suffix-icon {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.linker-settings-text-box {
+  min-width: var(--settings-box-min-width);
+  min-height: var(--settings-box-min-height);
+}
+
+.virtual-link-span .multiple-files-references,
+.virtual-link-span .multiple-files-indicator {
+  display: none;
+}
+
+.virtual-link-span:hover .multiple-files-references {
+  display: inline;
+}
+
+/* 虚拟链接基础样式 */
+.virtual-link {
+  display: inline;
+  background-color: rgba(128, 128, 128, 0.1);
+  border-radius: 2px;
+  padding: 0 2px;
+}
+
+/* 加粗上下文中的虚拟链接 */
+.virtual-link.cm-strong,
+.cm-strong .virtual-link {
+  font-weight: var(--bold-weight, bold) !important;
+  background-color: rgba(128, 128, 128, 0.1) !important;
+}
+
+/* 确保虚拟链接在CodeMirror加粗中保持样式 */
+.cm-strong .virtual-link-span {
+  font-weight: inherit !important;
+}
+
+/* 悬停效果 */
+.virtual-link:hover .multiple-files-references,
+.cm-strong .virtual-link:hover .multiple-files-references {
+  display: inline;
+}
+
+/* 多文件指示器 */
+.virtual-link .multiple-files-references,
+.virtual-link .multiple-files-indicator {
+  display: none;
+}
+
+.virtual-link:hover .multiple-files-references {
+  display: inline;
+}
+
+/* 处理嵌套情况 */
+.cm-strong .virtual-link .virtual-link {
+  font-weight: inherit !important;
 }

@@ -25,8 +25,33 @@ export class VirtualLinkWidget extends WidgetType {
     constructor(public match: VirtualMatch) {
         super();
     }
+    
     toDOM(view: EditorView): HTMLElement {
-        return this.match.getCompleteLinkElement();
+        const element = this.match.getCompleteLinkElement();
+        
+        // Check if current range is in bold context
+        let inBoldContext = false;
+        syntaxTree(view.state).iterate({
+            from: this.match.from,
+            to: this.match.to,
+            enter(node) {
+                if (node.type.name.includes('strong')) {
+                    inBoldContext = true;
+                    return false;
+                }
+            }
+        });
+        
+        if (inBoldContext || this.match.isBoldContext) {
+            element.classList.add('cm-strong');
+        }
+        
+        return element;
+    }
+    
+    // 设置更高的装饰优先级
+    get estimatedHeight(): number {
+        return -1;
     }
 }
 

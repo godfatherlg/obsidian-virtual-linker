@@ -691,7 +691,7 @@ class LinkerSettingTab extends PluginSettingTab {
         // Toggle to include aliases
         new Setting(containerEl)
             .setName('Include aliases')
-            .setDesc('If activated, the virtual linker will also include aliases for the files.')
+            .setDesc('If enabled, the virtual linker will also match file aliases.')
             .addToggle((toggle) =>
                 toggle.setValue(this.plugin.settings.includeAliases).onChange(async (value) => {
                     // console.log("Include aliases: " + value);
@@ -703,7 +703,7 @@ class LinkerSettingTab extends PluginSettingTab {
             // Toggle to only link once
             new Setting(containerEl)
                 .setName('Only link once')
-                .setDesc('If activated, there will not be several identical virtual links in the same note (Wikipedia style).')
+                .setDesc('When enabled, identical terms in the same note will only be linked once (Wikipedia-style linking).')
                 .addToggle((toggle) =>
                     toggle.setValue(this.plugin.settings.onlyLinkOnce).onChange(async (value) => {
                         // console.log("Only link once: " + value);
@@ -714,7 +714,7 @@ class LinkerSettingTab extends PluginSettingTab {
             // Toggle to exclude links to real linked files
             new Setting(containerEl)
                 .setName('Exclude links to real linked files')
-                .setDesc('If activated, there will be no links to files that are already linked in the note by real links.')
+                .setDesc('When enabled, terms that are already manually linked in the note will not be auto-linked.')
                 .addToggle((toggle) =>
                     toggle.setValue(this.plugin.settings.excludeLinksToRealLinkedFiles).onChange(async (value) => {
                         // console.log("Exclude links to real linked files: " + value);
@@ -726,7 +726,7 @@ class LinkerSettingTab extends PluginSettingTab {
         // If headers should be matched or not
         new Setting(containerEl)
             .setName('Include headers')
-            .setDesc('If activated, headers (so your lines beginning with at least one `#`) are included for virtual links.')
+            .setDesc('When enabled, Markdown headings (lines starting with #) will also be included for virtual linking.')
             .addToggle((toggle) =>
                 toggle.setValue(this.plugin.settings.includeHeaders).onChange(async (value) => {
                     // console.log("Include headers: " + value);
@@ -737,7 +737,7 @@ class LinkerSettingTab extends PluginSettingTab {
         // Toggle setting to match only whole words or any part of the word
         new Setting(containerEl)
             .setName('Match any part of a word')
-            .setDesc('If deactivated, only whole words are matched. Otherwise, every part of a word is found.')
+            .setDesc('When disabled, only complete word matches are linked. When enabled, any substring match will be linked.')
             .addToggle((toggle) =>
                 toggle.setValue(this.plugin.settings.matchAnyPartsOfWords).onChange(async (value) => {
                     // console.log("Match only whole words: " + value);
@@ -750,7 +750,7 @@ class LinkerSettingTab extends PluginSettingTab {
             // Toggle setting to match only beginning of words
             new Setting(containerEl)
                 .setName('Match the beginning of words')
-                .setDesc('If activated, the beginnings of words are also linked, even if it is not a whole match.')
+                .setDesc('When enabled, word prefixes will be linked even without complete word matches.')
                 .addToggle((toggle) =>
                     toggle.setValue(this.plugin.settings.matchBeginningOfWords).onChange(async (value) => {
                         // console.log("Match only beginning of words: " + value);
@@ -762,7 +762,7 @@ class LinkerSettingTab extends PluginSettingTab {
             // Toggle setting to match only end of words
             new Setting(containerEl)
                 .setName('Match the end of words')
-                .setDesc('If activated, the ends of words are also linked, even if it is not a whole match.')
+                .setDesc('When enabled, word suffixes will be linked even without complete word matches.')
                 .addToggle((toggle) =>
                     toggle.setValue(this.plugin.settings.matchEndOfWords).onChange(async (value) => {
                         // console.log("Match only end of words: " + value);
@@ -776,7 +776,7 @@ class LinkerSettingTab extends PluginSettingTab {
         if (this.plugin.settings.matchAnyPartsOfWords || this.plugin.settings.matchBeginningOfWords) {
             new Setting(containerEl)
                 .setName('Suppress suffix for sub words')
-                .setDesc('If activated, the suffix is not added to links for subwords, but only for complete matches.')
+                .setDesc('When enabled, the link suffix will only be shown for complete word matches, not partial matches.')
                 .addToggle((toggle) =>
                     toggle.setValue(this.plugin.settings.suppressSuffixForSubWords).onChange(async (value) => {
                         // console.log("Suppress suffix for sub words: " + value);
@@ -790,7 +790,7 @@ class LinkerSettingTab extends PluginSettingTab {
             new Setting(containerEl)
                 .setName('Fix IME problem')
                 .setDesc(
-                    'If activated, there will be no links in the current line start which is followed immediately by the Input Method Editor (IME). This is the recommended setting if you are using IME (input method editor) for typing, e.g. for chinese characters, because instant linking might interfere with IME.'
+                    'Recommended when using IME (Input Method Editor) for typing non-Latin scripts (like Chinese/Japanese/Korean). Prevents virtual linking from interfering with IME composition at the start of lines.'
                 )
                 .addToggle((toggle) =>
                     toggle.setValue(this.plugin.settings.fixIMEProblem).onChange(async (value) => {

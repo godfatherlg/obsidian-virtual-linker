@@ -14,7 +14,10 @@ export class VirtualMatch {
         public isSubWord: boolean,
         public settings: LinkerPluginSettings,
         public headerId?: string,
-        public isBoldContext: boolean = false
+        public isBoldContext: boolean = false,
+        public isItalicContext: boolean = false,
+        public isHighlightContext: boolean = false,
+        public isTripleStarContext: boolean = false
     ) {}
 
     get isAlias(): boolean {
@@ -71,9 +74,18 @@ export class VirtualMatch {
             span.classList.add('virtual-link-default');
         }
 
-        // Only mark bold context without adding extra DOM elements
+        // Add context-specific classes
         if (this.isBoldContext) {
             span.classList.add('virtual-link-in-bold');
+        }
+        if (this.isItalicContext) {
+            span.classList.add('virtual-link-in-italic');
+        }
+        if (this.isHighlightContext) {
+            span.classList.add('virtual-link-in-highlight');
+        }
+        if (this.isTripleStarContext) {
+            span.classList.add('virtual-link-in-triple-star');
         }
         
         return span;
@@ -87,12 +99,10 @@ export class VirtualMatch {
 
         files = files ?? this.files;
 
-
-
         files.forEach((file, index) => {
             if (index === 0) {
                 const bracket = document.createElement('span');
-                bracket.textContent = this.isSubWord ? '[' : ' [';
+                bracket.textContent = '[';  // 移除前置空格，统一使用紧凑格式
                 spanReferences.appendChild(bracket);
             }
 

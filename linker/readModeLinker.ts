@@ -118,8 +118,7 @@ export class GlossaryLinker extends MarkdownRenderChild {
                                         const headerId = node.type === MatchType.Header 
                                             ? node.headerId
                                             : undefined;
-                                        matches.push(
-                                            new VirtualMatch(
+                                            const match = new VirtualMatch(
                                                 id++,
                                                 name,
                                                 nFrom,
@@ -129,59 +128,73 @@ export class GlossaryLinker extends MarkdownRenderChild {
                                                 !isWordBoundary,
                                                 this.settings,
                                                 headerId
-                                            )
-                                        );
-                                    });
+                                            );
+                                        
+                                            // Check parent elements for format context
+                                            const parentEl = childNode.parentElement;
+                                            if (parentEl) {
+                                                match.isBoldContext = parentEl.matches('strong') || 
+                                                    parentEl.closest('strong') !== null;
+                                                match.isItalicContext = parentEl.matches('em') || 
+                                                    parentEl.closest('em') !== null;
+                                                match.isHighlightContext = parentEl.matches('mark') || 
+                                                    parentEl.closest('mark') !== null;
+                                                match.isTripleStarContext = match.isBoldContext && 
+                                                    match.isItalicContext;
+                                            }
+                                        
+                                            matches.push(match);
+                                        });
+                                    }
                                 }
+
+                                // Push the char to get the next nodes in the prefix tree
+                                this.linkerCache.cache.pushChar(char);
+                                i += char.length;
                             }
 
-                            // Push the char to get the next nodes in the prefix tree
-                            this.linkerCache.cache.pushChar(char);
-                            i += char.length;
-                        }
+                            // Sort additions by from position
+                            matches = VirtualMatch.sort(matches);
 
-                        // Sort additions by from position
-                        matches = VirtualMatch.sort(matches);
-
-                        // Delete additions that links to already linked files
-                        if (this.settings.excludeLinksToRealLinkedFiles) {
-                            matches = VirtualMatch.filterAlreadyLinked(matches, explicitlyLinkedFiles);
-                        }
-
-                        // Delete additions that links to already linked files
-                        if (this.settings.onlyLinkOnce) {
-                            matches = VirtualMatch.filterAlreadyLinked(matches, linkedFiles);
-                        }
-                        // Delete additions that overlap
-                        // Additions are sorted by from position and after that by length, we want to keep longer additions
-                        matches = VirtualMatch.filterOverlapping(matches, this.settings.onlyLinkOnce);
-
-                        const parent = childNode.parentElement;
-                        let lastTo = 0;
-                        // console.log("Parent: ", parent);
-
-                        matches.forEach((match) => {
-                            match.files.forEach((f) => linkedFiles.add(f));
-
-                            const span = match.getCompleteLinkElement();
-
-                            if (match.from > 0) {
-                                parent?.insertBefore(document.createTextNode(text.slice(lastTo, match.from)), childNode);
+                            // Delete additions that links to already linked files
+                            if (this.settings.excludeLinksToRealLinkedFiles) {
+                                matches = VirtualMatch.filterAlreadyLinked(matches, explicitlyLinkedFiles);
                             }
 
-                            parent?.insertBefore(span, childNode);
-                            lastTo = match.to;
-                        });
+                            // Delete additions that links to already linked files
+                            if (this.settings.onlyLinkOnce) {
+                                matches = VirtualMatch.filterAlreadyLinked(matches, linkedFiles);
+                            }
+                            // Delete additions that overlap
+                            // Additions are sorted by from position and after that by length, we want to keep longer additions
+                            matches = VirtualMatch.filterOverlapping(matches, this.settings.onlyLinkOnce);
 
-                        const textLength = text.length;
-                        if (lastTo < textLength) {
-                            parent?.insertBefore(document.createTextNode(text.slice(lastTo)), childNode);
+                            const parent = childNode.parentElement;
+                            let lastTo = 0;
+                            // console.log("Parent: ", parent);
+
+                            matches.forEach((match) => {
+                                match.files.forEach((f) => linkedFiles.add(f));
+
+                                const span = match.getCompleteLinkElement();
+
+                                if (match.from > 0) {
+                                    parent?.insertBefore(document.createTextNode(text.slice(lastTo, match.from)), childNode);
+                                }
+
+                                parent?.insertBefore(span, childNode);
+                                lastTo = match.to;
+                            });
+
+                            const textLength = text.length;
+                            if (lastTo < textLength) {
+                                parent?.insertBefore(document.createTextNode(text.slice(lastTo)), childNode);
+                            }
+                            parent?.removeChild(childNode);
+                            childNodeIndex += 1;
                         }
-                        parent?.removeChild(childNode);
-                        childNodeIndex += 1;
                     }
                 }
             }
         }
-    }
 }

@@ -29,21 +29,54 @@ export class VirtualLinkWidget extends WidgetType {
     toDOM(view: EditorView): HTMLElement {
         const element = this.match.getCompleteLinkElement();
         
-        // Check if current range is in bold context
+        // Check current format context with precise range checking
         let inBoldContext = false;
+        let inItalicContext = false;
+        let inHighlightContext = false;
+        
+        // Get the exact text range of the virtual link
+        const linkRange = { from: this.match.from, to: this.match.to };
+        
         syntaxTree(view.state).iterate({
             from: this.match.from,
             to: this.match.to,
             enter(node) {
-                if (node.type.name.includes('strong')) {
-                    inBoldContext = true;
-                    return false;
+                const type = node.type.name;
+                const nodeRange = { from: node.from, to: node.to };
+                
+                // Only set context if virtual link is fully contained within the format node
+                if (linkRange.from >= nodeRange.from && linkRange.to <= nodeRange.to) {
+                    if (type.includes('strong')) {
+                        inBoldContext = true;
+                    }
+                    if (type.includes('em')) {
+                        inItalicContext = true;
+                    }
+                    if (type.includes('highlight')) {
+                        inHighlightContext = true;
+                    }
                 }
             }
         });
         
-        if (inBoldContext || this.match.isBoldContext) {
+        // Set context flags on the match
+        this.match.isBoldContext = inBoldContext || this.match.isBoldContext;
+        this.match.isItalicContext = inItalicContext;
+        this.match.isHighlightContext = inHighlightContext;
+        this.match.isTripleStarContext = inBoldContext && inItalicContext;
+        
+        // Add corresponding CSS classes
+        if (this.match.isBoldContext) {
             element.classList.add('cm-strong');
+        }
+        if (this.match.isItalicContext) {
+            element.classList.add('cm-em');
+        }
+        if (this.match.isHighlightContext) {
+            element.classList.add('cm-highlight');
+        }
+        if (this.match.isTripleStarContext) {
+            element.classList.add('cm-strong', 'cm-em');
         }
         
         return element;
@@ -139,7 +172,7 @@ class AutoLinkerPlugin implements PluginValue {
             if (excludedFolders.includes(path ?? '')) return builder.finish();
         }
 
-        // Set to exclude file that are explicitly linked
+        // Set to exclude files that are explicitly linked
         const explicitlyLinkedFiles = new Set<TFile>();
 
         // Set to exclude files that are already linked by a virtual link

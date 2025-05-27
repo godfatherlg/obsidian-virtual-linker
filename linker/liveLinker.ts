@@ -29,19 +29,27 @@ export class VirtualLinkWidget extends WidgetType {
     toDOM(view: EditorView): HTMLElement {
         const element = this.match.getCompleteLinkElement();
         
+<<<<<<< HEAD
         // Check current format context with precise range checking
+=======
+        // Check current format context
+>>>>>>> cf6a9fbb407c6fd0c41f59ebb049b4c0b7097c1b
         let inBoldContext = false;
         let inItalicContext = false;
         let inHighlightContext = false;
         
+<<<<<<< HEAD
         // Get the exact text range of the virtual link
         const linkRange = { from: this.match.from, to: this.match.to };
         
+=======
+>>>>>>> cf6a9fbb407c6fd0c41f59ebb049b4c0b7097c1b
         syntaxTree(view.state).iterate({
             from: this.match.from,
             to: this.match.to,
             enter(node) {
                 const type = node.type.name;
+<<<<<<< HEAD
                 const nodeRange = { from: node.from, to: node.to };
                 
                 // Only set context if virtual link is fully contained within the format node
@@ -55,6 +63,16 @@ export class VirtualLinkWidget extends WidgetType {
                     if (type.includes('highlight')) {
                         inHighlightContext = true;
                     }
+=======
+                if (type.includes('strong')) {
+                    inBoldContext = true;
+                }
+                if (type.includes('em')) {
+                    inItalicContext = true;
+                }
+                if (type.includes('highlight')) {
+                    inHighlightContext = true;
+>>>>>>> cf6a9fbb407c6fd0c41f59ebb049b4c0b7097c1b
                 }
             }
         });
